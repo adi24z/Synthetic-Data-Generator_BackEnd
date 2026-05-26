@@ -1,0 +1,29 @@
+apache-airflow==2.9.1
+
+# Spark
+pyspark==3.5.1
+
+# Data generation
+faker
+pandas
+openpyxl
+lxml
+
+# APIs
+fastapi
+uvicorn
+requests
+
+# GCP
+google-cloud-storage
+google-auth
+
+# XML support
+xmltodict
+
+# Email utilities
+secure-smtplib
+email-validator
+
+# Async Dependencies:
+httpx

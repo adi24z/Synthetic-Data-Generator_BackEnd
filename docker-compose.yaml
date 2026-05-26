@@ -1,0 +1,203 @@
+version: '3.8'
+
+x-airflow-common:
+  &airflow-common
+  build: .
+
+  environment:
+    &airflow-common-env
+
+    # Airflow Core
+    AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+    AIRFLOW__CORE__FERNET_KEY: ""
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
+
+    # Database
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+
+    # Celery
+    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres/airflow
+    AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
+
+    # API Authentication
+    AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth
+
+    # Secrets from .env
+    GROQ_API_KEY: ${GROQ_API_KEY}
+    EMAIL_SENDER: ${EMAIL_SENDER}
+    EMAIL_PASSWORD: ${EMAIL_PASSWORD}
+    GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS}
+    GCP_BUCKET_NAME: ${GCP_BUCKET_NAME}
+
+    # Spark
+    JAVA_HOME: /usr/lib/jvm/java-17-openjdk-arm64
+    PYSPARK_PYTHON: python3
+
+    # FastAPI
+    FASTAPI_HOST: 0.0.0.0
+    FASTAPI_PORT: 8000
+
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./logs:/opt/airflow/logs
+    - ./plugins:/opt/airflow/plugins
+    - ./output:/opt/airflow/output
+    - ./fastapi_app:/opt/airflow/fastapi_app
+    - ./gcp-key.json:/opt/airflow/gcp-key.json
+
+  user: "${AIRFLOW_UID:-50000}:0"
+
+  depends_on:
+    &airflow-common-depends-on
+    redis:
+      condition: service_healthy
+    postgres:
+      condition: service_healthy
+
+services:
+
+  postgres:
+    image: postgres:13
+
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+
+    restart: always
+
+  redis:
+    image: redis:7.2-bookworm
+
+    expose:
+      - "6379"
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 30s
+      retries: 50
+      start_period: 30s
+
+    restart: always
+
+  airflow-webserver:
+    <<: *airflow-common
+
+    command: webserver
+
+    ports:
+      - "8080:8080"
+
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+    restart: always
+
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-scheduler:
+    <<: *airflow-common
+
+    command: scheduler
+
+    restart: always
+
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-worker:
+    <<: *airflow-common
+
+    command: celery worker
+
+    restart: always
+
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-triggerer:
+    <<: *airflow-common
+
+    command: triggerer
+
+    restart: always
+
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-init:
+    <<: *airflow-common
+
+    user: "0:0"
+
+    entrypoint: /bin/bash
+
+    command:
+      - -c
+      - |
+        airflow db migrate && \
+        airflow users create \
+          --username airflow \
+          --password airflow \
+          --firstname Airflow \
+          --lastname Admin \
+          --role Admin \
+          --email admin@example.com
+
+  fastapi:
+    build: .
+
+    container_name: fastapi_server
+
+    working_dir: /opt/airflow/fastapi_app
+
+    entrypoint: /bin/bash
+
+    command:
+      - -c
+      - |
+        uvicorn app:app --host 0.0.0.0 --port 8000
+
+    ports:
+      - "8000:8000"
+
+    environment:
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      EMAIL_SENDER: ${EMAIL_SENDER}
+      EMAIL_PASSWORD: ${EMAIL_PASSWORD}
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS}
+      GCP_BUCKET_NAME: ${GCP_BUCKET_NAME}
+
+    volumes:
+      - ./fastapi_app:/opt/airflow/fastapi_app
+      - ./gcp-key.json:/opt/airflow/gcp-key.json
+
+    depends_on:
+      - airflow-webserver
+
+volumes:
+  postgres-db-volume:
