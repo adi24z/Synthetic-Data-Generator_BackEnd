@@ -29,6 +29,24 @@ Docker + Docker Compose
 -> docker compose up -d (-d because we want to run it in detached mode so that the same terminal remains free and you can run frontend you can see logs in docker desktop, if you want to see logs in cli then dont add -d and use another terminal window to run other things)
 -> To see airflow architecture do docker ps
 
+## Directory_Format:
+```backend
+├── dags/
+│   └── ai_pipeline.py
+├── fastapi_app/
+│   └── app.py
+├── utils/
+│   ├── gcp_utils.py
+│   ├── mailer.py
+│   └── spark_jobs.py
+├── output/
+├── Dockerfile
+├── docker-compose.yaml
+├── requirements.txt
+└── .env
+
+
+
 ## Architecture
 
 ```text
