@@ -8,6 +8,19 @@ It receives a request from the frontend and orchestrates a full workflow using F
 
 ---
 
+## Tech Stack
+
+FastAPI (Async API layer)
+Apache Airflow 2.9 (Orchestration)
+Celery + Redis (Distributed execution, mostly used in YAML)
+PostgreSQL (Metadata DB, mostly used in YAML)
+PySpark (Data generation)
+Pandas (Data formatting)
+Groq API (LLM for schema generation)
+Google Cloud Storage (File storage)
+SMTP (Email notifications)
+Docker + Docker Compose
+
 ## Architecture
 
 ```text
@@ -33,6 +46,5 @@ Google Cloud Storage
       │
       ▼
 Signed Download URL
-
 
 
