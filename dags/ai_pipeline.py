@@ -256,7 +256,7 @@ def send_email_task(**context):
     print(url)
 
     send_email(
-        recipient=context["dag_run"].conf.get("email", "ceogoogl123@gmail.com"),
+        recipient=context["dag_run"].conf.get("email", "DefaultEmail@gmail.com"),
         download_url=url
     )
 
