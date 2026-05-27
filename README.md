@@ -101,6 +101,49 @@ Generating dataset based on user input in keyword with a predefined prompt hardc
 ```
 keyword: "Aircrafts"
 ```
+```
+def generate_schema(**context):
+
+    keyword = context["dag_run"].conf.get(
+        "keyword",
+        "types of Aircrafts"
+    )
+
+    prompt = f"""
+    Generate realistic dataset columns for:
+    {keyword}
+    
+    Return ONLY valid JSON.
+
+    Example:
+    {{
+      "columns": [
+        "Aircraft_type",
+        "Airline_users",
+        "Engine_configurations"
+      ]
+    }}
+    """
+
+    response = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {os.getenv('GROQ_API_KEY')}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "model": "openai/gpt-oss-120b",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+        }
+    )
+
+    result = response.json()
+```
 #### Schema 
 Schema is generated in form of JSON and stored in Airflow XCom which is used for cross communiction between other DAG phases which I will describe below
 
