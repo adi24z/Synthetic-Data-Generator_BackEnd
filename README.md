@@ -1,6 +1,6 @@
 # AI Synthetic Data Generator – Backend
 
-## 🧠 Overview
+## Overview
 
 This backend is a **distributed AI-powered synthetic data generation system** that combines:
 
@@ -15,7 +15,7 @@ The system transforms a simple user request into a fully generated dataset pipel
 
 ---
 
-# 🏗️ Backend Architecture
+# Backend Architecture
 
 ## High-Level System Design
 
